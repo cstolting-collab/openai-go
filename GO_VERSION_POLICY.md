@@ -1,8 +1,11 @@
 # Go Version Policy
 
-The OpenAI Go SDK supports the current stable Go release and the immediately
-preceding stable Go release. The oldest supported release is declared by the
-`go` directive in [`go.mod`](go.mod) and is tested on every pull request.
+The OpenAI Go SDK normally supports the current stable Go release and the
+immediately preceding stable Go release when its secure dependency graph allows
+both lines. The oldest supported release is declared by the `go` directive in
+[`go.mod`](go.mod) and is tested on every pull request. A security or dependency
+requirement may force an earlier minimum increase, subject to SDK CODEOWNERS
+approval and the release requirements below.
 
 The SDK team may retain the most recently retired Go release for up to six
 months when the dependency graph and security posture allow it. This grace
@@ -36,8 +39,17 @@ proposes the current and immediately preceding stable Go releases.
 
 | SDK version | Go requirement |
 | --- | --- |
-| v3.45.0 through current | Go 1.25 or later |
+| v3.45.0 through v3.64.3 | Go 1.25 or later |
+| Next minor release (proposal pending CODEOWNERS approval) | Go 1.26 or later |
 | v3.44.0 | Final release that builds with Go 1.22–1.24 |
+
+The proposed early end of Go 1.25 support is dated 2026-10-09. The scheduled
+`govulncheck` scan found five reachable advisories in `golang.org/x/net v0.58.0`;
+its reported fixed version, v0.60.0, declares Go 1.26.0. The required Go 1.25
+CI run confirms that the fixed module cannot be used with Go 1.25. The proposed
+minimum increase must ship in a minor release and receive SDK CODEOWNERS approval.
+If approval is not granted, maintainers must choose another security disposition;
+this proposal must not be shipped as a patch release.
 
 Previously published SDK versions remain available. Unsupported Go releases
 and older SDK versions receive no guaranteed fixes or security backports. Users

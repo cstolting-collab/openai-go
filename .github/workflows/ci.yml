@@ -73,11 +73,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Test the latest patch in the previous and current stable Go lines.
-        # Keep this matrix synchronized with GO_VERSION_POLICY.md. The monthly
-        # Codex review proposes both changes together when a Go release lands.
+        # The proposed minimum Go version is the current stable line because
+        # the security-fixed x/net release requires Go 1.26.
+        # Keep this matrix synchronized with GO_VERSION_POLICY.md.
         go-version:
-          - '1.25.x'
           - '1.26.x'
     # setup-go installs the selected matrix version first. "local" then stops
     # the go command from silently switching to a newer toolchain.
