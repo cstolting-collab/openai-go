@@ -56,6 +56,9 @@ jobs:
           go-version: '1.26.x'
           check-latest: true
 
+      - name: Diagnose Go module tidy diff
+        run: go mod tidy -diff
+
       - name: Run lints
         run: ./scripts/lint
 
