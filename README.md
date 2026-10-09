@@ -37,9 +37,12 @@ go get -u 'github.com/openai/openai-go/v3@v3.64.3'
 
 ## Requirements
 
-SDK v3.45.0 and later require Go 1.25 or later. If your application must
-remain on Go 1.22–1.24, pin SDK v3.44.0, the final compatible release. Older
-SDK releases receive no guaranteed fixes or security backports.
+SDK v3.45.0 through v3.64.3 require Go 1.25 or later. This draft proposes
+that the next minor release require Go 1.26 or later so it can use the fixed
+`golang.org/x/net` release. SDK v3.64.3 is the final published release known to
+support Go 1.25. For applications on Go 1.22–1.24, pin SDK v3.44.0, the final
+compatible release. Older SDK releases receive no guaranteed fixes or security
+backports.
 
 See the [Go version support policy](GO_VERSION_POLICY.md) for the supported
 release window and upgrade guidance.
