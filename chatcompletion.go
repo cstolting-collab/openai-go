@@ -913,7 +913,7 @@ type ChatCompletionAudioParam struct {
 	// `ash`, `ballad`, `coral`, `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`,
 	// `marin`, and `cedar`. You may also provide a custom voice object with an `id`,
 	// for example `{ "id": "voice_1234" }`. Custom voices must be created from audio
-	// samples.
+	// samples. Voices created from text prompts are supported only in Live.
 	Voice ChatCompletionAudioParamVoiceUnion `json:"voice,omitzero" api:"required"`
 	paramObj
 }
@@ -2566,15 +2566,6 @@ func (r *ChatCompletionMessage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-func (r ChatCompletionMessage) ToParam() ChatCompletionMessageParamUnion {
-	asst := r.ToAssistantMessageParam()
-	return ChatCompletionMessageParamUnion{OfAssistant: &asst}
-}
-
-func (r ChatCompletionMessage) ToAssistantMessageParam() ChatCompletionAssistantMessageParam {
-	return chatCompletionMessageToAssistantParam(r)
-}
-
 // A URL citation when using web search.
 type ChatCompletionMessageAnnotation struct {
 	// The type of the URL citation. Always `url_citation`.
@@ -2848,10 +2839,6 @@ func (r ChatCompletionMessageFunctionToolCallFunctionParam) MarshalJSON() (data 
 }
 func (r *ChatCompletionMessageFunctionToolCallFunctionParam) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func AssistantMessage[T string | []ChatCompletionAssistantMessageParamContentArrayOfContentPartUnion](content T) ChatCompletionMessageParamUnion {
-	return ChatCompletionMessageParamOfAssistant(content)
 }
 
 func DeveloperMessage[T string | []ChatCompletionContentPartTextParam](content T) ChatCompletionMessageParamUnion {
@@ -3881,7 +3868,7 @@ type ChatCompletionNewParams struct {
 	PromptCacheKey param.Opt[string] `json:"prompt_cache_key,omitzero"`
 	// A stable identifier used to help detect users of your application that may be
 	// violating OpenAI's usage policies. The IDs should be a string that uniquely
-	// identifies each user, with a maximum length of 64 characters. We recommend
+	// identifies each user, with a maximum length of 128 characters. We recommend
 	// hashing their username or email address, in order to avoid sending us any
 	// identifying information.
 	// [Learn more](https://developers.openai.com/api/docs/guides/safety-best-practices#implement-safety-identifiers).

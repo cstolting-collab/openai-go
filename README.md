@@ -30,7 +30,7 @@ Or to pin an SDK version (see the Go compatibility note below):
 <!-- x-release-please-start-version -->
 
 ```sh
-go get -u 'github.com/openai/openai-go/v3@v3.75.0'
+go get -u 'github.com/openai/openai-go/v3@v3.85.1'
 ```
 
 <!-- x-release-please-end -->
@@ -116,6 +116,59 @@ if err != nil {
 }
 fmt.Println("Second response:", response.OutputText())
 ```
+</details>
+
+<details>
+<summary>Manually managed Responses history</summary>
+
+For ordinary multi-turn conversations, prefer `PreviousResponseID` or a
+Conversation. If you manage a stateless history yourself, preserve every returned
+output item in its original order. Do not filter the response down to `message`
+items: complete history can include reasoning and tool items, and assistant
+messages can carry `phase` metadata that must be replayed.
+
+`Response.ToInput()` copies every item from a completed response in original
+order, including tool items, encrypted reasoning content, assistant phase, and
+unknown fields. Append your new user or tool input to the returned value, and start
+a new request without `PreviousResponseID`.
+
+```go
+history := responses.ResponseInputParam{
+	responses.ResponseInputItemParamOfMessage(
+		"Write a Python prime checker.",
+		responses.EasyInputMessageRoleUser,
+	),
+}
+
+response, err := client.Responses.New(ctx, responses.ResponseNewParams{
+	Model: openai.ChatModelGPT5_2,
+	Store: openai.Bool(false),
+	Input: responses.ResponseNewParamsInputUnion{OfInputItemList: history},
+})
+if err != nil {
+	panic(err)
+}
+
+// Keep every output item, including reasoning, tool items, and assistant phase.
+history = append(history, response.ToInput()...)
+history = append(history, responses.ResponseInputItemParamOfMessage(
+	"Add type hints.",
+	responses.EasyInputMessageRoleUser,
+))
+
+response, err = client.Responses.New(ctx, responses.ResponseNewParams{
+	Model: openai.ChatModelGPT5_2,
+	Store: openai.Bool(false),
+	Input: responses.ResponseNewParamsInputUnion{OfInputItemList: history},
+})
+if err != nil {
+	panic(err)
+}
+```
+
+For streaming, add only completed output items—for example, from
+`response.output_item.done`—rather than an in-progress
+`response.output_item.added` event.
 </details>
 
 <details>
@@ -472,7 +525,7 @@ input := responses.ResponseInputParam{
     responses.ResponseInputItemParamOfMessage("Explain the result.", responses.EasyInputMessageRoleUser),
 }
 err := connection.Create(ctx, responses.ResponsesClientEventResponseCreateParam{
-    Model: "gpt-4o-mini",
+    Model: openai.ChatModelGPT5_2,
     PreviousResponseID: openai.String(previous.ID),
     Input: responses.ResponsesClientEventResponseCreateInputUnionParam{OfResponse: &input},
 })
@@ -502,7 +555,7 @@ fork, err := connection.Lane("fork")
 if err != nil { return err }
 defer fork.Close()
 if err := connection.Create(ctx, responses.ResponsesClientEventResponseCreateParam{
-    Model: "gpt-4o-mini", Store: openai.Bool(false),
+    Model: openai.ChatModelGPT5_2, Store: openai.Bool(false),
     StreamID: openai.String("fork"), PreviousResponseID: openai.String(previous.ID),
     Input: responses.ResponsesClientEventResponseCreateInputUnionParam{OfString: openai.String("Explore another approach.")},
 }); err != nil { return err }
@@ -539,7 +592,7 @@ for _, item := range compacted.Output {
     input = append(input, param.Override[responses.ResponseInputItemUnionParam](json.RawMessage(item.RawJSON())))
 }
 err := connection.Create(ctx, responses.ResponsesClientEventResponseCreateParam{
-    Model: "gpt-4o-mini",
+    Model: openai.ChatModelGPT5_2,
     Input: responses.ResponsesClientEventResponseCreateInputUnionParam{OfResponse: &input},
 })
 ```
@@ -956,6 +1009,36 @@ openai.FileNewParams{
 ```
 
 ## Webhook Verification
+
+Signature verification authenticates the delivery and checks timestamp freshness.
+It does not provide exactly-once processing: the same signed request can pass
+verification more than once within the accepted timestamp window. The handlers
+below show verification only; applications must deduplicate before side effects.
+
+After successful verification, use the authenticated `webhook-id` header as a
+deduplication key, scoped to your application or endpoint. Store it durably with
+a unique constraint shared by all workers. For database effects, claim the ID
+and apply the effect in the same transaction. For example, this PostgreSQL
+pseudocode assumes `processed_webhooks` has a unique `(endpoint, delivery_id)` key:
+
+```sql
+BEGIN;
+INSERT INTO processed_webhooks (endpoint, delivery_id)
+VALUES (:endpoint, :verified_webhook_id)
+ON CONFLICT (endpoint, delivery_id) DO NOTHING
+RETURNING delivery_id;
+-- If no row was returned, acknowledge the duplicate without applying effects.
+-- Otherwise, apply the application's database changes in this transaction.
+COMMIT;
+```
+
+Roll back the claim when processing fails so a retry can succeed. For external
+effects, write a transactional outbox entry and have its worker use a stable
+idempotency key with the destination. A separate "seen" check followed by an
+insert races between workers; an in-memory set does not survive restarts or
+coordinate replicas. Retain deduplication records for the application's retry
+and replay policy, not merely the SDK's default five-minute timestamp tolerance.
+Return a successful acknowledgement for an already completed delivery.
 
 Verifying webhook signatures is _optional but encouraged_.
 
@@ -1532,6 +1615,8 @@ connections use the same attested transport and bearer-token exchange, including
 custom request headers and the configured opening retry budget. Close each
 WebSocket connection to release its stream; capability `Close` retains its
 ordinary behavior of allowing already active requests to finish.
+X.509-authenticated WebSocket connections are limited to Responses. Live,
+fork, and sideband WebSocket connections do not support X.509 authentication.
 A legacy `http.Transport.Dial` remains supported for compatibility when
 `DialContext` is unset, but its in-progress
 dial call cannot itself be interrupted by context cancellation. The capability
@@ -1686,6 +1771,35 @@ This package generally follows [SemVer](https://semver.org/spec/v2.0.0.html) con
 We take backwards-compatibility seriously and work hard to ensure you can rely on a smooth upgrade experience.
 
 We are keen for your feedback; please open an [issue](https://www.github.com/openai/openai-go/issues) with questions, bugs, or suggestions.
+
+## Reconnecting a WebSocket session
+
+`packages/websocket.OpenSession` can reopen a failed connection. Pass it a
+function that opens a connection with a fresh authenticated request on each
+attempt. Reconnecting is off by default. When enabled, keep calling `Recv` so the
+SDK can detect connection failures. An event that ends a response or session does
+not itself trigger a reconnect.
+
+The SDK keeps the same session object and allows five reconnect attempts in total
+by default. Retry delays grow to eight seconds by default. `Close` or `Abort`
+cancels pending retries. Reopening does not restore server state. For a Realtime
+model session, restore any session settings and conversation state your application needs.
+Pause other application sends while restoring state; the callback does not block them.
+
+By default, sends while reconnecting fail without writing. Set `MaxPendingBytes`
+to hold unsent commands up to that size in bytes. After restoring session state,
+call `FlushPending` to send them, or `TakePending` to remove them without sending.
+`FlushPending` returns `ErrPendingLimit` while the connection is recovering or
+another send, serialization, or flush is in progress. Retry the flush when it is ready.
+A waiting `Send` still respects its context. It returns nil only after a local
+write succeeds. This does not confirm that the server received the command.
+The SDK does not resend commands it already tried to send.
+
+Generated API methods must support this feature before you can enable it with
+`option.WithWebSocketReconnect(true)`. For methods that support it,
+`option.WithWebSocketRecovery` sets limits and an optional `OnReconnected`
+callback. Other methods ignore these options. Existing `websocket.Options` fields
+and defaults stay the same.
 
 ## Contributing
 

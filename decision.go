@@ -35,17 +35,8 @@ func NewDecisionService(opts ...option.RequestOption) (r DecisionService) {
 	return
 }
 
-// Evaluate ordered classification and scoring questions against shared input.
-// Answers are returned in question order.
-//
-// Supply input as a string or user messages containing text and inline images.
-// Only user messages with `input_text` and `input_image` parts are supported;
-// non-user roles, function calls, files, audio, and item references are not
-// supported. Images require a data URL, not an external URL or file ID. At most
-// 128 images are allowed across the request.
-//
-// Each question can return a refusal instead of a scored answer. A refusal has
-// type `refusal` and the corresponding question name, or null if unnamed.
+// Use this endpoint to quickly answer classification or scoring questions about
+// some input. You can ask multiple questions in one request.
 func (r *DecisionService) New(ctx context.Context, body DecisionNewParams, opts ...option.RequestOption) (res *Decision, err error) {
 	var preClientOpts = []option.RequestOption{requestconfig.WithBearerAuthSecurity()}
 	opts = slices.Concat(preClientOpts, r.Options, opts)
@@ -55,9 +46,14 @@ func (r *DecisionService) New(ctx context.Context, body DecisionNewParams, opts 
 }
 
 type Decision struct {
+	// Answers in question order. Any question can return a refusal instead of an
+	// answer; other questions can still receive answers. A refusal has
+	// `type: "refusal"` and the question's `name`, or `null` if it was unnamed.
 	Answers []DecisionAnswerUnion `json:"answers" api:"required"`
-	Model   string                `json:"model" api:"required"`
-	Usage   DecisionUsage         `json:"usage" api:"required"`
+	// The model used.
+	Model string `json:"model" api:"required"`
+	// Token usage for the request.
+	Usage DecisionUsage `json:"usage" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Answers     respjson.Field
@@ -380,7 +376,8 @@ func (r *DecisionAnswerScoreProbability) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The host may decline one question without disclosing its refusal score.
+// The model declined to answer this question. Other questions in the same request
+// can still receive answers.
 type DecisionAnswerRefusal struct {
 	Name string `json:"name" api:"required"`
 	// The type of the object. Always `refusal`.
@@ -400,6 +397,7 @@ func (r *DecisionAnswerRefusal) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Token usage for the request.
 type DecisionUsage struct {
 	InputTokens         int64                            `json:"input_tokens" api:"required"`
 	InputTokensDetails  DecisionUsageInputTokensDetails  `json:"input_tokens_details" api:"required"`
@@ -458,17 +456,22 @@ func (r *DecisionUsageOutputTokensDetails) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// An inline image. External URLs and file IDs are not supported.
+// An image provided as a base64 data URL or a publicly accessible HTTP(S) URL.
+// File IDs are not supported.
 //
 // The properties ImageURL, Type are required.
 type DecisionInputImageParam struct {
-	// A base64-encoded image in a data URL.
+	// A base64-encoded image in a data URL or a publicly accessible HTTP(S) image URL.
 	ImageURL string `json:"image_url" api:"required"`
 	// The image detail level, using the selected model's image profile. Defaults to
 	// auto.
 	//
 	// Any of "low", "high", "auto", "original".
 	Detail DecisionInputImageDetail `json:"detail,omitzero"`
+	// Marks the exact end of a reusable prompt prefix. The breakpoint inherits its TTL
+	// from the request's `prompt_cache_options.ttl`; the boundary is not rounded to a
+	// token block.
+	PromptCacheBreakpoint DecisionPromptCacheBreakpointParam `json:"prompt_cache_breakpoint,omitzero"`
 	// This field can be elided, and will marshal its zero value as "input_image".
 	Type constant.InputImage `json:"type" default:"input_image"`
 	paramObj
@@ -493,11 +496,11 @@ const (
 	DecisionInputImageDetailOriginal DecisionInputImageDetail = "original"
 )
 
-// A user message containing text or inline images.
+// A user message containing text or images.
 //
 // The properties Content, Role are required.
 type DecisionInputMessageParam struct {
-	// Text evidence or an ordered list of text and inline image parts.
+	// Text evidence or an ordered list of text and image parts.
 	Content DecisionInputMessageContentUnionParam `json:"content,omitzero" api:"required"`
 	// Any of "message".
 	Type DecisionInputMessageType `json:"type,omitzero"`
@@ -598,6 +601,17 @@ func (u DecisionInputPartUnionParam) GetType() *string {
 	return nil
 }
 
+// Returns a pointer to the underlying variant's PromptCacheBreakpoint property, if
+// present.
+func (u DecisionInputPartUnionParam) GetPromptCacheBreakpoint() *DecisionPromptCacheBreakpointParam {
+	if vt := u.OfInputText; vt != nil {
+		return &vt.PromptCacheBreakpoint
+	} else if vt := u.OfInputImage; vt != nil {
+		return &vt.PromptCacheBreakpoint
+	}
+	return nil
+}
+
 func init() {
 	apijson.RegisterUnion[DecisionInputPartUnionParam](
 		"type",
@@ -609,6 +623,10 @@ func init() {
 // The properties Text, Type are required.
 type DecisionInputTextParam struct {
 	Text string `json:"text" api:"required"`
+	// Marks the exact end of a reusable prompt prefix. The breakpoint inherits its TTL
+	// from the request's `prompt_cache_options.ttl`; the boundary is not rounded to a
+	// token block.
+	PromptCacheBreakpoint DecisionPromptCacheBreakpointParam `json:"prompt_cache_breakpoint,omitzero"`
 	// This field can be elided, and will marshal its zero value as "input_text".
 	Type constant.InputText `json:"type" default:"input_text"`
 	paramObj
@@ -622,17 +640,58 @@ func (r *DecisionInputTextParam) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+func NewDecisionPromptCacheBreakpointParam() DecisionPromptCacheBreakpointParam {
+	return DecisionPromptCacheBreakpointParam{
+		Mode: "explicit",
+	}
+}
+
+// Marks the exact end of a reusable prompt prefix. The breakpoint inherits its TTL
+// from the request's `prompt_cache_options.ttl`; the boundary is not rounded to a
+// token block.
+//
+// This struct has a constant value, construct it with
+// [NewDecisionPromptCacheBreakpointParam].
+type DecisionPromptCacheBreakpointParam struct {
+	// The breakpoint mode. Always `explicit`.
+	Mode constant.Explicit `json:"mode" default:"explicit"`
+	paramObj
+}
+
+func (r DecisionPromptCacheBreakpointParam) MarshalJSON() (data []byte, err error) {
+	type shadow DecisionPromptCacheBreakpointParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *DecisionPromptCacheBreakpointParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type DecisionNewParams struct {
-	// Shared evidence, as a string or an array of user messages containing text and
-	// inline images. Non-user roles, function calls, function-call outputs, files,
-	// audio, and item references are not supported. At most 128 image parts are
-	// allowed across all messages in one request.
-	Input     DecisionNewParamsInputUnion      `json:"input,omitzero" api:"required"`
-	Model     string                           `json:"model" api:"required"`
+	// The text or images to evaluate for every question. Provide a text string or user
+	// messages containing text and images. Images can be base64 data URLs or publicly
+	// accessible HTTP(S) URLs; at most 128 images are allowed across all messages in
+	// one request. Files, audio, tools, and item references are not supported.
+	Input DecisionNewParamsInputUnion `json:"input,omitzero" api:"required"`
+	// The model to use. Only `gpt-6-luna` is supported.
+	Model string `json:"model" api:"required"`
+	// Ask 1–200 questions about the input. Each question can be a predicate, choice,
+	// or score. Answers come back in the same order.
 	Questions []DecisionNewParamsQuestionUnion `json:"questions,omitzero" api:"required"`
+	// Partition prompt cache reuse by caller-provided key.
+	PromptCacheKey param.Opt[string] `json:"prompt_cache_key,omitzero"`
 	// Opaque caller-provided end-user identifier, scoped by the verified org. Match
 	// Responses' limit; this is never the authenticated user identity.
 	SafetyIdentifier param.Opt[string] `json:"safety_identifier,omitzero"`
+	// Options for prompt caching. Supported for `gpt-5.6` and later models. By
+	// default, OpenAI automatically chooses one implicit cache breakpoint. You can add
+	// explicit breakpoints to content blocks with `prompt_cache_breakpoint`. Each
+	// request can write up to four breakpoints. For cache matching, OpenAI considers
+	// up to the latest 80 breakpoints in the conversation, without a content-block
+	// lookback limit. Set `mode` to `explicit` to disable the implicit breakpoint. The
+	// `ttl` defaults to `30m`, which is currently the only supported value. See the
+	// [prompt caching guide](https://developers.openai.com/api/docs/guides/prompt-caching)
+	// for current details.
+	PromptCacheOptions DecisionNewParamsPromptCacheOptions `json:"prompt_cache_options,omitzero"`
 	paramObj
 }
 
@@ -738,6 +797,8 @@ func init() {
 	)
 }
 
+// Estimate how likely it is that a statement about the input is true.
+//
 // The properties Instructions, Type are required.
 type DecisionNewParamsQuestionPredicate struct {
 	Instructions string            `json:"instructions" api:"required"`
@@ -757,8 +818,11 @@ func (r *DecisionNewParamsQuestionPredicate) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Choose from the supplied options based on the input.
+//
 // The properties Choices, Instructions, Type are required.
 type DecisionNewParamsQuestionChoice struct {
+	// Provide between 2 and 255 choices. Each choice must be unique.
 	Choices      []DecisionNewParamsQuestionChoiceChoice `json:"choices,omitzero" api:"required"`
 	Instructions string                                  `json:"instructions" api:"required"`
 	Name         param.Opt[string]                       `json:"name,omitzero"`
@@ -809,6 +873,8 @@ func (u *DecisionNewParamsQuestionChoiceChoiceValueUnion) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, u)
 }
 
+// Rate the input against the supplied ordered levels.
+//
 // The properties Instructions, Levels, Type are required.
 type DecisionNewParamsQuestionScore struct {
 	Instructions string                                `json:"instructions" api:"required"`
@@ -842,4 +908,46 @@ func (r DecisionNewParamsQuestionScoreLevel) MarshalJSON() (data []byte, err err
 }
 func (r *DecisionNewParamsQuestionScoreLevel) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for prompt caching. Supported for `gpt-5.6` and later models. By
+// default, OpenAI automatically chooses one implicit cache breakpoint. You can add
+// explicit breakpoints to content blocks with `prompt_cache_breakpoint`. Each
+// request can write up to four breakpoints. For cache matching, OpenAI considers
+// up to the latest 80 breakpoints in the conversation, without a content-block
+// lookback limit. Set `mode` to `explicit` to disable the implicit breakpoint. The
+// `ttl` defaults to `30m`, which is currently the only supported value. See the
+// [prompt caching guide](https://developers.openai.com/api/docs/guides/prompt-caching)
+// for current details.
+type DecisionNewParamsPromptCacheOptions struct {
+	// Controls whether OpenAI automatically creates an implicit cache breakpoint.
+	// Defaults to `implicit`. With `implicit`, OpenAI creates one implicit breakpoint
+	// and writes up to the latest three explicit breakpoints in the request. With
+	// `explicit`, OpenAI does not create an implicit breakpoint and writes up to the
+	// latest four explicit breakpoints. If there are no explicit breakpoints, the
+	// request does not use prompt caching.
+	//
+	// Any of "implicit", "explicit".
+	Mode param.Opt[string] `json:"mode,omitzero"`
+	// The minimum lifetime applied to every implicit and explicit cache breakpoint
+	// written by the request. Defaults to `30m`, which is currently the only supported
+	// value. The backend may retain cache entries for longer.
+	//
+	// Any of "30m".
+	Ttl string `json:"ttl,omitzero"`
+	paramObj
+}
+
+func (r DecisionNewParamsPromptCacheOptions) MarshalJSON() (data []byte, err error) {
+	type shadow DecisionNewParamsPromptCacheOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *DecisionNewParamsPromptCacheOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[DecisionNewParamsPromptCacheOptions](
+		"ttl", "30m",
+	)
 }

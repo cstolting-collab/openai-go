@@ -1035,7 +1035,8 @@ func (r *AdminOrganizationAuditLogListResponseExternalStorageRegisteredData) Unm
 
 // AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderUnion
 // contains all possible properties and values from [AwsExternalStorageProvider],
-// [AzureExternalStorageProvider], [GcpExternalStorageProvider].
+// [AzureExternalStorageProvider], [GcpExternalStorageProvider],
+// [OciExternalStorageProvider].
 //
 // Use the
 // [AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderUnion.AsAny]
@@ -1051,7 +1052,7 @@ type AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderU
 	Region     string `json:"region"`
 	// This field is from variant [AwsExternalStorageProvider].
 	RoleArn string `json:"role_arn"`
-	// Any of "aws", "azure", "gcp".
+	// Any of "aws", "azure", "gcp", "oci".
 	Type string `json:"type"`
 	// This field is from variant [AzureExternalStorageProvider].
 	AccountName string `json:"account_name"`
@@ -1071,7 +1072,9 @@ type AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderU
 	WorkloadIdentityProjectNumber string `json:"workload_identity_project_number"`
 	// This field is from variant [GcpExternalStorageProvider].
 	WorkloadIdentityProviderID string `json:"workload_identity_provider_id"`
-	JSON                       struct {
+	// This field is from variant [OciExternalStorageProvider].
+	TenancyOcid string `json:"tenancy_ocid"`
+	JSON        struct {
 		AccountID                     respjson.Field
 		Bucket                        respjson.Field
 		ExternalID                    respjson.Field
@@ -1087,6 +1090,7 @@ type AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderU
 		WorkloadIdentityPoolID        respjson.Field
 		WorkloadIdentityProjectNumber respjson.Field
 		WorkloadIdentityProviderID    respjson.Field
+		TenancyOcid                   respjson.Field
 		raw                           string
 	} `json:"-"`
 }
@@ -1106,6 +1110,8 @@ func (AzureExternalStorageProvider) implAdminOrganizationAuditLogListResponseExt
 }
 func (GcpExternalStorageProvider) implAdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderUnion() {
 }
+func (OciExternalStorageProvider) implAdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderUnion() {
+}
 
 // Use the following switch statement to find the correct variant
 //
@@ -1113,6 +1119,7 @@ func (GcpExternalStorageProvider) implAdminOrganizationAuditLogListResponseExter
 //	case openai.AwsExternalStorageProvider:
 //	case openai.AzureExternalStorageProvider:
 //	case openai.GcpExternalStorageProvider:
+//	case openai.OciExternalStorageProvider:
 //	default:
 //	  fmt.Errorf("no variant present")
 //	}
@@ -1124,6 +1131,8 @@ func (u AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProvid
 		return u.AsAzure()
 	case "gcp":
 		return u.AsGcp()
+	case "oci":
+		return u.AsOci()
 	}
 	return nil
 }
@@ -1139,6 +1148,11 @@ func (u AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProvid
 }
 
 func (u AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderUnion) AsGcp() (v GcpExternalStorageProvider) {
+	_ = apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u AdminOrganizationAuditLogListResponseExternalStorageRegisteredDataProviderUnion) AsOci() (v OciExternalStorageProvider) {
 	_ = apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }

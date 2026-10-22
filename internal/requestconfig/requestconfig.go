@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/openai/openai-go/v3/packages/websocket"
 	"io"
 	"math"
 	"math/rand"
@@ -334,6 +335,7 @@ type HTTPDoer interface {
 // Editing the variables inside RequestConfig directly is unstable api. Prefer
 // composing the RequestOption instead if possible.
 type RequestConfig struct {
+	WebSocketRecovery          websocket.RecoveryOptions
 	MaxRetries                 int
 	MaxRetryDelay              time.Duration
 	RequestTimeout             time.Duration
@@ -691,6 +693,9 @@ func (cfg *RequestConfig) Execute() (err error) {
 			}
 		}
 		if ctx != nil && ctx.Err() != nil {
+			if res != nil && res.Body != nil {
+				_ = res.Body.Close()
+			}
 			return ctx.Err()
 		}
 		if !shouldRetry(cfg.Request, res, err) || retryCount >= cfg.MaxRetries {

@@ -24,7 +24,11 @@ type Agent string                                             // Always "agent"
 type AgentMessage string                                      // Always "agent_message"
 type AgentDeleted string                                      // Always "agent.deleted"
 type AgentEnvironment string                                  // Always "agent.environment"
+type AgentEnvironmentExpired string                           // Always "agent.environment.expired"
+type AgentEnvironmentFailed string                            // Always "agent.environment.failed"
 type AgentEnvironmentFile string                              // Always "agent.environment.file"
+type AgentEnvironmentReady string                             // Always "agent.environment.ready"
+type AgentEnvironmentSuspended string                         // Always "agent.environment.suspended"
 type AgentEnvironmentTemplate string                          // Always "agent.environment.template"
 type AgentEnvironmentTemplateDeleted string                   // Always "agent.environment.template.deleted"
 type AgentOutputCommandExecutionOutputDelta string            // Always "agent.output.command_execution_output.delta"
@@ -36,10 +40,12 @@ type AgentSessionCreated string                               // Always "agent.s
 type AgentSessionDeleted string                               // Always "agent.session.deleted"
 type AgentSessionEnvironmentConnected string                  // Always "agent.session.environment.connected"
 type AgentSessionEnvironmentDisconnected string               // Always "agent.session.environment.disconnected"
+type AgentSessionEnvironmentExpired string                    // Always "agent.session.environment.expired"
 type AgentSessionEnvironmentFailed string                     // Always "agent.session.environment.failed"
 type AgentSessionEnvironmentPending string                    // Always "agent.session.environment.pending"
 type AgentSessionEnvironmentReady string                      // Always "agent.session.environment.ready"
 type AgentSessionEnvironmentReset string                      // Always "agent.session.environment.reset"
+type AgentSessionEnvironmentSuspended string                  // Always "agent.session.environment.suspended"
 type AgentSessionFailed string                                // Always "agent.session.failed"
 type AgentSessionIdle string                                  // Always "agent.session.idle"
 type AgentSessionInProgress string                            // Always "agent.session.in_progress"
@@ -79,6 +85,7 @@ type Assistant string                                         // Always "assista
 type AssistantDeleted string                                  // Always "assistant.deleted"
 type AudioSample string                                       // Always "audio_sample"
 type AudioVoice string                                        // Always "audio.voice"
+type AudioVoiceConsent string                                 // Always "audio.voice_consent"
 type AudioPCM string                                          // Always "audio/pcm"
 type AudioPCMA string                                         // Always "audio/pcma"
 type AudioPCMU string                                         // Always "audio/pcmu"
@@ -164,6 +171,14 @@ type CreatedAt string                                         // Always "created
 type Custom string                                            // Always "custom"
 type CustomToolCall string                                    // Always "custom_tool_call"
 type CustomToolCallOutput string                              // Always "custom_tool_call_output"
+type DecisionCompleted string                                 // Always "decision.completed"
+type DecisionCreate string                                    // Always "decision.create"
+type DecisionEvent string                                     // Always "decision.event"
+type DecisionItemCreate string                                // Always "decision.item.create"
+type DecisionItemCreated string                               // Always "decision.item.created"
+type DecisionItemDelete string                                // Always "decision.item.delete"
+type DecisionItemDeleted string                               // Always "decision.item.deleted"
+type Decisions string                                         // Always "decisions"
 type Delegation string                                        // Always "delegation"
 type DeleteFile string                                        // Always "delete_file"
 type Developer string                                         // Always "developer"
@@ -276,6 +291,7 @@ type MultiAgentCall string                                    // Always "multi_a
 type MultiAgentCallOutput string                              // Always "multi_agent_call_output"
 type Namespace string                                         // Always "namespace"
 type None string                                              // Always "none"
+type Oci string                                               // Always "oci"
 type OpenPage string                                          // Always "open_page"
 type OpenAIHosted string                                      // Always "openai_hosted"
 type OrganizationAdminAPIKey string                           // Always "organization.admin_api_key"
@@ -308,6 +324,7 @@ type OrganizationUsageAudioSpeechesResult string              // Always "organiz
 type OrganizationUsageAudioTranscriptionsResult string        // Always "organization.usage.audio_transcriptions.result"
 type OrganizationUsageCodeInterpreterSessionsResult string    // Always "organization.usage.code_interpreter_sessions.result"
 type OrganizationUsageCompletionsResult string                // Always "organization.usage.completions.result"
+type OrganizationUsageDecisionsResult string                  // Always "organization.usage.decisions.result"
 type OrganizationUsageEmbeddingsResult string                 // Always "organization.usage.embeddings.result"
 type OrganizationUsageFileSearchesResult string               // Always "organization.usage.file_searches.result"
 type OrganizationUsageImagesResult string                     // Always "organization.usage.images.result"
@@ -462,6 +479,9 @@ type SessionInputTranscriptDelta string                       // Always "session
 type SessionInstructionsAppend string                         // Always "session.instructions.append"
 type SessionInstructionsAppended string                       // Always "session.instructions.appended"
 type SessionOutputAudioDelta string                           // Always "session.output_audio.delta"
+type SessionOutputAudioFixturePlay string                     // Always "session.output_audio.fixture.play"
+type SessionOutputAudioFixturePlayed string                   // Always "session.output_audio.fixture.played"
+type SessionOutputAudioFixturePlaying string                  // Always "session.output_audio.fixture.playing"
 type SessionOutputTranscriptDelta string                      // Always "session.output_transcript.delta"
 type SessionStart string                                      // Always "session.start"
 type SessionStarted string                                    // Always "session.started"
@@ -574,13 +594,21 @@ type WebhookEndpointDeleted string                            // Always "webhook
 type WebhookEndpointTest string                               // Always "webhook_endpoint.test"
 type Webrtc string                                            // Always "webrtc"
 
-func (c Active) Default() Active                             { return "active" }
-func (c AdditionalTools) Default() AdditionalTools           { return "additional_tools" }
-func (c Agent) Default() Agent                               { return "agent" }
-func (c AgentMessage) Default() AgentMessage                 { return "agent_message" }
-func (c AgentDeleted) Default() AgentDeleted                 { return "agent.deleted" }
-func (c AgentEnvironment) Default() AgentEnvironment         { return "agent.environment" }
-func (c AgentEnvironmentFile) Default() AgentEnvironmentFile { return "agent.environment.file" }
+func (c Active) Default() Active                     { return "active" }
+func (c AdditionalTools) Default() AdditionalTools   { return "additional_tools" }
+func (c Agent) Default() Agent                       { return "agent" }
+func (c AgentMessage) Default() AgentMessage         { return "agent_message" }
+func (c AgentDeleted) Default() AgentDeleted         { return "agent.deleted" }
+func (c AgentEnvironment) Default() AgentEnvironment { return "agent.environment" }
+func (c AgentEnvironmentExpired) Default() AgentEnvironmentExpired {
+	return "agent.environment.expired"
+}
+func (c AgentEnvironmentFailed) Default() AgentEnvironmentFailed { return "agent.environment.failed" }
+func (c AgentEnvironmentFile) Default() AgentEnvironmentFile     { return "agent.environment.file" }
+func (c AgentEnvironmentReady) Default() AgentEnvironmentReady   { return "agent.environment.ready" }
+func (c AgentEnvironmentSuspended) Default() AgentEnvironmentSuspended {
+	return "agent.environment.suspended"
+}
 func (c AgentEnvironmentTemplate) Default() AgentEnvironmentTemplate {
 	return "agent.environment.template"
 }
@@ -606,6 +634,9 @@ func (c AgentSessionEnvironmentConnected) Default() AgentSessionEnvironmentConne
 func (c AgentSessionEnvironmentDisconnected) Default() AgentSessionEnvironmentDisconnected {
 	return "agent.session.environment.disconnected"
 }
+func (c AgentSessionEnvironmentExpired) Default() AgentSessionEnvironmentExpired {
+	return "agent.session.environment.expired"
+}
 func (c AgentSessionEnvironmentFailed) Default() AgentSessionEnvironmentFailed {
 	return "agent.session.environment.failed"
 }
@@ -617,6 +648,9 @@ func (c AgentSessionEnvironmentReady) Default() AgentSessionEnvironmentReady {
 }
 func (c AgentSessionEnvironmentReset) Default() AgentSessionEnvironmentReset {
 	return "agent.session.environment.reset"
+}
+func (c AgentSessionEnvironmentSuspended) Default() AgentSessionEnvironmentSuspended {
+	return "agent.session.environment.suspended"
 }
 func (c AgentSessionFailed) Default() AgentSessionFailed         { return "agent.session.failed" }
 func (c AgentSessionIdle) Default() AgentSessionIdle             { return "agent.session.idle" }
@@ -701,6 +735,7 @@ func (c Assistant) Default() Assistant                         { return "assista
 func (c AssistantDeleted) Default() AssistantDeleted           { return "assistant.deleted" }
 func (c AudioSample) Default() AudioSample                     { return "audio_sample" }
 func (c AudioVoice) Default() AudioVoice                       { return "audio.voice" }
+func (c AudioVoiceConsent) Default() AudioVoiceConsent         { return "audio.voice_consent" }
 func (c AudioPCM) Default() AudioPCM                           { return "audio/pcm" }
 func (c AudioPCMA) Default() AudioPCMA                         { return "audio/pcma" }
 func (c AudioPCMU) Default() AudioPCMU                         { return "audio/pcmu" }
@@ -814,6 +849,14 @@ func (c CreatedAt) Default() CreatedAt                           { return "creat
 func (c Custom) Default() Custom                                 { return "custom" }
 func (c CustomToolCall) Default() CustomToolCall                 { return "custom_tool_call" }
 func (c CustomToolCallOutput) Default() CustomToolCallOutput     { return "custom_tool_call_output" }
+func (c DecisionCompleted) Default() DecisionCompleted           { return "decision.completed" }
+func (c DecisionCreate) Default() DecisionCreate                 { return "decision.create" }
+func (c DecisionEvent) Default() DecisionEvent                   { return "decision.event" }
+func (c DecisionItemCreate) Default() DecisionItemCreate         { return "decision.item.create" }
+func (c DecisionItemCreated) Default() DecisionItemCreated       { return "decision.item.created" }
+func (c DecisionItemDelete) Default() DecisionItemDelete         { return "decision.item.delete" }
+func (c DecisionItemDeleted) Default() DecisionItemDeleted       { return "decision.item.deleted" }
+func (c Decisions) Default() Decisions                           { return "decisions" }
 func (c Delegation) Default() Delegation                         { return "delegation" }
 func (c DeleteFile) Default() DeleteFile                         { return "delete_file" }
 func (c Developer) Default() Developer                           { return "developer" }
@@ -944,6 +987,7 @@ func (c MultiAgentCall) Default() MultiAgentCall                 { return "multi
 func (c MultiAgentCallOutput) Default() MultiAgentCallOutput     { return "multi_agent_call_output" }
 func (c Namespace) Default() Namespace                           { return "namespace" }
 func (c None) Default() None                                     { return "none" }
+func (c Oci) Default() Oci                                       { return "oci" }
 func (c OpenPage) Default() OpenPage                             { return "open_page" }
 func (c OpenAIHosted) Default() OpenAIHosted                     { return "openai_hosted" }
 func (c OrganizationAdminAPIKey) Default() OrganizationAdminAPIKey {
@@ -1025,6 +1069,9 @@ func (c OrganizationUsageCodeInterpreterSessionsResult) Default() OrganizationUs
 }
 func (c OrganizationUsageCompletionsResult) Default() OrganizationUsageCompletionsResult {
 	return "organization.usage.completions.result"
+}
+func (c OrganizationUsageDecisionsResult) Default() OrganizationUsageDecisionsResult {
+	return "organization.usage.decisions.result"
 }
 func (c OrganizationUsageEmbeddingsResult) Default() OrganizationUsageEmbeddingsResult {
 	return "organization.usage.embeddings.result"
@@ -1332,6 +1379,15 @@ func (c SessionInstructionsAppended) Default() SessionInstructionsAppended {
 func (c SessionOutputAudioDelta) Default() SessionOutputAudioDelta {
 	return "session.output_audio.delta"
 }
+func (c SessionOutputAudioFixturePlay) Default() SessionOutputAudioFixturePlay {
+	return "session.output_audio.fixture.play"
+}
+func (c SessionOutputAudioFixturePlayed) Default() SessionOutputAudioFixturePlayed {
+	return "session.output_audio.fixture.played"
+}
+func (c SessionOutputAudioFixturePlaying) Default() SessionOutputAudioFixturePlaying {
+	return "session.output_audio.fixture.playing"
+}
 func (c SessionOutputTranscriptDelta) Default() SessionOutputTranscriptDelta {
 	return "session.output_transcript.delta"
 }
@@ -1470,7 +1526,11 @@ func (c Agent) MarshalJSON() ([]byte, error)                           { return 
 func (c AgentMessage) MarshalJSON() ([]byte, error)                    { return marshalString(c) }
 func (c AgentDeleted) MarshalJSON() ([]byte, error)                    { return marshalString(c) }
 func (c AgentEnvironment) MarshalJSON() ([]byte, error)                { return marshalString(c) }
+func (c AgentEnvironmentExpired) MarshalJSON() ([]byte, error)         { return marshalString(c) }
+func (c AgentEnvironmentFailed) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c AgentEnvironmentFile) MarshalJSON() ([]byte, error)            { return marshalString(c) }
+func (c AgentEnvironmentReady) MarshalJSON() ([]byte, error)           { return marshalString(c) }
+func (c AgentEnvironmentSuspended) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c AgentEnvironmentTemplate) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c AgentEnvironmentTemplateDeleted) MarshalJSON() ([]byte, error) { return marshalString(c) }
 func (c AgentOutputCommandExecutionOutputDelta) MarshalJSON() ([]byte, error) {
@@ -1484,10 +1544,12 @@ func (c AgentSessionCreated) MarshalJSON() ([]byte, error)                 { ret
 func (c AgentSessionDeleted) MarshalJSON() ([]byte, error)                 { return marshalString(c) }
 func (c AgentSessionEnvironmentConnected) MarshalJSON() ([]byte, error)    { return marshalString(c) }
 func (c AgentSessionEnvironmentDisconnected) MarshalJSON() ([]byte, error) { return marshalString(c) }
+func (c AgentSessionEnvironmentExpired) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c AgentSessionEnvironmentFailed) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c AgentSessionEnvironmentPending) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c AgentSessionEnvironmentReady) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c AgentSessionEnvironmentReset) MarshalJSON() ([]byte, error)        { return marshalString(c) }
+func (c AgentSessionEnvironmentSuspended) MarshalJSON() ([]byte, error)    { return marshalString(c) }
 func (c AgentSessionFailed) MarshalJSON() ([]byte, error)                  { return marshalString(c) }
 func (c AgentSessionIdle) MarshalJSON() ([]byte, error)                    { return marshalString(c) }
 func (c AgentSessionInProgress) MarshalJSON() ([]byte, error)              { return marshalString(c) }
@@ -1537,6 +1599,7 @@ func (c Assistant) MarshalJSON() ([]byte, error)                        { return
 func (c AssistantDeleted) MarshalJSON() ([]byte, error)                 { return marshalString(c) }
 func (c AudioSample) MarshalJSON() ([]byte, error)                      { return marshalString(c) }
 func (c AudioVoice) MarshalJSON() ([]byte, error)                       { return marshalString(c) }
+func (c AudioVoiceConsent) MarshalJSON() ([]byte, error)                { return marshalString(c) }
 func (c AudioPCM) MarshalJSON() ([]byte, error)                         { return marshalString(c) }
 func (c AudioPCMA) MarshalJSON() ([]byte, error)                        { return marshalString(c) }
 func (c AudioPCMU) MarshalJSON() ([]byte, error)                        { return marshalString(c) }
@@ -1630,6 +1693,14 @@ func (c CreatedAt) MarshalJSON() ([]byte, error)                           { ret
 func (c Custom) MarshalJSON() ([]byte, error)                              { return marshalString(c) }
 func (c CustomToolCall) MarshalJSON() ([]byte, error)                      { return marshalString(c) }
 func (c CustomToolCallOutput) MarshalJSON() ([]byte, error)                { return marshalString(c) }
+func (c DecisionCompleted) MarshalJSON() ([]byte, error)                   { return marshalString(c) }
+func (c DecisionCreate) MarshalJSON() ([]byte, error)                      { return marshalString(c) }
+func (c DecisionEvent) MarshalJSON() ([]byte, error)                       { return marshalString(c) }
+func (c DecisionItemCreate) MarshalJSON() ([]byte, error)                  { return marshalString(c) }
+func (c DecisionItemCreated) MarshalJSON() ([]byte, error)                 { return marshalString(c) }
+func (c DecisionItemDelete) MarshalJSON() ([]byte, error)                  { return marshalString(c) }
+func (c DecisionItemDeleted) MarshalJSON() ([]byte, error)                 { return marshalString(c) }
+func (c Decisions) MarshalJSON() ([]byte, error)                           { return marshalString(c) }
 func (c Delegation) MarshalJSON() ([]byte, error)                          { return marshalString(c) }
 func (c DeleteFile) MarshalJSON() ([]byte, error)                          { return marshalString(c) }
 func (c Developer) MarshalJSON() ([]byte, error)                           { return marshalString(c) }
@@ -1742,6 +1813,7 @@ func (c MultiAgentCall) MarshalJSON() ([]byte, error)                      { ret
 func (c MultiAgentCallOutput) MarshalJSON() ([]byte, error)                { return marshalString(c) }
 func (c Namespace) MarshalJSON() ([]byte, error)                           { return marshalString(c) }
 func (c None) MarshalJSON() ([]byte, error)                                { return marshalString(c) }
+func (c Oci) MarshalJSON() ([]byte, error)                                 { return marshalString(c) }
 func (c OpenPage) MarshalJSON() ([]byte, error)                            { return marshalString(c) }
 func (c OpenAIHosted) MarshalJSON() ([]byte, error)                        { return marshalString(c) }
 func (c OrganizationAdminAPIKey) MarshalJSON() ([]byte, error)             { return marshalString(c) }
@@ -1786,6 +1858,7 @@ func (c OrganizationUsageCodeInterpreterSessionsResult) MarshalJSON() ([]byte, e
 	return marshalString(c)
 }
 func (c OrganizationUsageCompletionsResult) MarshalJSON() ([]byte, error)    { return marshalString(c) }
+func (c OrganizationUsageDecisionsResult) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c OrganizationUsageEmbeddingsResult) MarshalJSON() ([]byte, error)     { return marshalString(c) }
 func (c OrganizationUsageFileSearchesResult) MarshalJSON() ([]byte, error)   { return marshalString(c) }
 func (c OrganizationUsageImagesResult) MarshalJSON() ([]byte, error)         { return marshalString(c) }
@@ -1944,6 +2017,9 @@ func (c SessionInputTranscriptDelta) MarshalJSON() ([]byte, error)         { ret
 func (c SessionInstructionsAppend) MarshalJSON() ([]byte, error)           { return marshalString(c) }
 func (c SessionInstructionsAppended) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c SessionOutputAudioDelta) MarshalJSON() ([]byte, error)             { return marshalString(c) }
+func (c SessionOutputAudioFixturePlay) MarshalJSON() ([]byte, error)       { return marshalString(c) }
+func (c SessionOutputAudioFixturePlayed) MarshalJSON() ([]byte, error)     { return marshalString(c) }
+func (c SessionOutputAudioFixturePlaying) MarshalJSON() ([]byte, error)    { return marshalString(c) }
 func (c SessionOutputTranscriptDelta) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c SessionStart) MarshalJSON() ([]byte, error)                        { return marshalString(c) }
 func (c SessionStarted) MarshalJSON() ([]byte, error)                      { return marshalString(c) }
